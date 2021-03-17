@@ -1,0 +1,3 @@
+[submodule "PlanarReconstruction"]
+	path = PlanarReconstruction
+	url = https://github.com/loicmagne/PlanarReconstruction.git
