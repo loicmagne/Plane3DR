@@ -19,7 +19,7 @@ def point2pointICP(frameSeq,threshold=0.5,iterations=100):
         transf.append(reg_p2p.transformation)
     return transf
 
-def plane2planeICP(frameSeq,threshold=0.5,iterations=10000):
+def plane2planeICP(frameSeq,threshold=0.5,iterations=100):
     transf = [np.eye(4)]
     current = frameSeq[0]
     for nxt in tqdm(frameSeq[1:]):
@@ -35,10 +35,8 @@ def plane2planeICP(frameSeq,threshold=0.5,iterations=10000):
     return transf
 
 if __name__ == '__main__':
-    seq = FrameSeq([str(10*k) for k in range(21)][:5],precomputed=True)
+    seq = FrameSeq([str(10*k) for k in range(1)],precomputed=True)
     seq.display()
-    seq.displayPlaneParameters()
     seq.transform(point2pointICP(seq))
-    print(seq.transformations)
+    print(np.asarray(seq[0].cloudParam.points))
     seq.display()
-    seq.displayPlaneParameters()

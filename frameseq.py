@@ -28,13 +28,30 @@ class FrameSeq():
         self.transformations = transformations
 
     def display(self):
-        transformed_clouds = []
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(np.array([[0.,0.,0.],[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]]))
+        pcd.colors = o3d.utility.Vector3dVector(np.array([[1,0,0],[0,1,0],[0,1,0],[0,1,0]]))
+
+        """
+        # Rotates the point cloud to face the camera
+        cloud.transform([[ 1 , 0 , 0 , 0 ], 
+                         [ 0 ,-1 , 0 , 0 ],
+                         [ 0 , 0 ,-1 , 0 ],
+                         [ 0 , 0 , 0 , 1 ]])"""
+
+        transformed_clouds = [pcd]
         curr_t = self.transformations[0]
         for f,t in zip(self.frames,self.transformations):
             curr_t = np.dot(t,curr_t)
             copy_c = copy.deepcopy(f.cloud)
             copy_c.transform(curr_t)
             transformed_clouds.append(copy_c)
+
+            copy_c = copy.deepcopy(f.cloudParam)
+            copy_c.transform(curr_t)
+            copy_c.paint_uniform_color([0,0,1])
+            transformed_clouds.append(copy_c)
+
         o3d.visualization.draw_geometries(transformed_clouds)
     
     def displayPlaneParameters(self):
@@ -49,5 +66,5 @@ class FrameSeq():
         o3d.visualization.draw_geometries(transformed_clouds)
 
 if __name__ == '__main__':
-    seq = FrameSeq([str(10*k) for k in range(21)],precomputed=True)
+    seq = FrameSeq([str(10*k) for k in range(5)])
     seq.display()

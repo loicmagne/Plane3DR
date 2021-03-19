@@ -50,23 +50,21 @@ class RawFrame():
         self.depth, self.segmentation, self.planarMask, self.planeParams = \
             PlaneNet.infer(self.img)
 
+        self.planeParams /= np.square(np.linalg.norm(self.planeParams.T,axis=1).T)
         if planar:
             self.depth[self.planarMask==0] = 0
         if depthTreshold:
             self.depth[self.depth>=depthTreshold] = 0
 
-        f = 1170.187988
-        scale_x = 256. / 1296.
-        scale_y = 192. / 968.
+        f = 1170.
+        w, h = 256, 192
+        cx, cy = 128, 96
+        scale_x = w / 1296.
+        scale_y = h / 968.
         intrinsic = o3d.camera.PinholeCameraIntrinsic()
-        intrinsic.set_intrinsics(256,192,f*scale_x,f*scale_y,96,128)
+        intrinsic.set_intrinsics(w,h,f*scale_x,f*scale_y,cx,cy)
         depth_img = o3d.geometry.Image(self.depth)
         cloud = o3d.geometry.PointCloud.create_from_depth_image(depth_img,intrinsic)
-        # Rotates the point cloud to face the camera
-        cloud.transform([[ 1 , 0 , 0 , 0 ], 
-                              [ 0 ,-1 , 0 , 0 ],
-                              [ 0 , 0 ,-1 , 0 ],
-                              [ 0 , 0 , 0 , 1 ]])
         self.cloud = np.asarray(cloud.points)
 
     def save(self):
@@ -114,6 +112,3 @@ class Frame():
 
     def save(self):
         self.raw.save()
-
-if __name__ == '__main__':
-    frames = getFrames([str(10*k) for k in range(21)],precomputed=True)
