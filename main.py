@@ -48,8 +48,7 @@ def registrationICP(current, nxt, threshold, iterations, init, registration_tech
     return reg_p2p
 
 if __name__ == '__main__':
-    seq = FrameSeq([str(10*k) for k in range(21)][8:10],precomputed=True)
+    seq = FrameSeq([str(10*k) for k in range(21)][:8],precomputed=True)
     seq.display()
-    init = ICP(seq,registration_technique='point2point', inits=None)
-    seq.transform(ICP(seq,registration_technique='point2plane', inits=init))
+    seq.transform(ICP(seq,registration_technique='point2plane'))
     seq.display()
