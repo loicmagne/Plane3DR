@@ -1,6 +1,8 @@
 import numpy as np
-import sys, os
 import open3d as o3d
+import cv2
+
+import sys, os
 from tqdm import tqdm
 import pickle as pickle
 
@@ -46,9 +48,10 @@ class RawFrame():
             if true, only the planar parts of the image will be kept, if
             false, a depth prediction will be done on non planar parts
         '''
-        self.img = img
+        self.img_path = img
+        self.img = cv2.imread(f'data/raw_images/{img}.jpg')
         self.depth, self.segmentation, self.planarMask, self.planeParams = \
-            PlaneNet.infer(self.img)
+            PlaneNet.infer(self.img_path)
 
         self.planeParams /= np.square(np.linalg.norm(self.planeParams.T,axis=1).T)
         if planar:
@@ -68,7 +71,7 @@ class RawFrame():
         self.cloud = np.asarray(cloud.points)
 
     def save(self):
-        with open(f'data/precomputed_frames/{self.img}.pkl', 'wb') as f:
+        with open(f'data/precomputed_frames/{self.img_path}.pkl', 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
