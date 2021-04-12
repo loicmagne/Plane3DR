@@ -3,6 +3,7 @@ import open3d as o3d
 from tqdm import tqdm
 
 from frameseq import *
+from reprojection import *
 
 def ICP(frameSeq, registration_technique='point2point', inits=None, threshold=0.5, iterations=50):
     transf = [np.eye(4)]

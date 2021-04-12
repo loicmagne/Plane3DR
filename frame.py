@@ -52,22 +52,30 @@ class RawFrame():
         self.img = cv2.imread(f'data/raw_images/{img}.jpg')
         self.depth, self.segmentation, self.planarMask, self.planeParams = \
             PlaneNet.infer(self.img_path)
+        self.planarMask = (255*self.planarMask).astype(np.uint8)
+        # self.planeParams /= np.square(np.linalg.norm(self.planeParams.T,axis=1).T)
 
-        self.planeParams /= np.square(np.linalg.norm(self.planeParams.T,axis=1).T)
+        # Resize image to the size of the depth map
+        self.h, self.w = 192, 256
+        self.img = cv2.resize(self.img, (self.w, self.h))
+        self.img_gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+
+        # Remove non planar areas and far areas
         if planar:
             self.depth[self.planarMask==0] = 0
         if depthTreshold:
             self.depth[self.depth>=depthTreshold] = 0
 
+        # Compute intrinsics and point cloud
         f = 1170.
-        w, h = 256, 192
         cx, cy = 128, 96
-        scale_x = w / 1296.
-        scale_y = h / 968.
+        scale_x = self.w / 1296.
+        scale_y = self.h / 968.
         intrinsic = o3d.camera.PinholeCameraIntrinsic()
-        intrinsic.set_intrinsics(w,h,f*scale_x,f*scale_y,cx,cy)
+        intrinsic.set_intrinsics(self.w,self.h,f*scale_x,f*scale_y,cx,cy)
         depth_img = o3d.geometry.Image(self.depth)
         cloud = o3d.geometry.PointCloud.create_from_depth_image(depth_img,intrinsic)
+        self.intrinsic = intrinsic.intrinsic_matrix
         self.cloud = np.asarray(cloud.points)
 
     def save(self):

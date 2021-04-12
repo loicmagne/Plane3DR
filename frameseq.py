@@ -117,5 +117,5 @@ class FrameSeq():
         o3d.visualization.draw_geometries(transformed_clouds)
 
 if __name__ == '__main__':
-    seq = FrameSeq([str(10*k) for k in range(20)],precomputed=True,poses=True)
+    seq = FrameSeq([str(10*k) for k in range(20)],precomputed=False,poses=True)
     seq.display()
