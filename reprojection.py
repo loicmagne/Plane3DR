@@ -1,7 +1,7 @@
 import jax.numpy as np
 from jax import jit, grad, random
 
-from util import highGradientPixels, inside
+from util import highGradientPixels
 
 # PyCeres import
 import sys
@@ -9,6 +9,26 @@ import os
 pyceres_location='../ceres-bin/lib'
 sys.path.insert(0, os.path.abspath(pyceres_location))
 import PyCeres
+
+def Rx(theta):
+    return np.array([[ 1, 0            , 0            ],
+                     [ 0, np.cos(theta),-np.sin(theta)],
+                     [ 0, np.sin(theta), np.cos(theta)]])
+  
+def Ry(theta):
+    return np.array([[ np.cos(theta), 0, np.sin(theta)],
+                     [ 0            , 1, 0            ],
+                     [-np.sin(theta), 0, np.cos(theta)]])
+  
+def Rz(theta):
+    return np.array([[ np.cos(theta), -np.sin(theta), 0 ],
+                     [ np.sin(theta), np.cos(theta) , 0 ],
+                     [ 0            , 0             , 1 ]])
+                
+def rotationM(x,y,z):
+    return np.dot(np.dot(Rx(x),Rx(y)),Rx(z))
+
+
 
 def bilinear_interpolate(im, pt):
     x,y = pt
@@ -38,12 +58,13 @@ def costF(ref, tar, pt):
     K = ref.raw.intrinsic
     K_inv = np.linalg.inv(K)
     def cost(camera):
+        rotation = rotationM(*camera[:3])
+        translation = camera[3:]
         # Compute the photometric residual
         homogeneous = np.concatenate((pt,np.array([1])))
         normalized_plane_pt = np.dot(K_inv,homogeneous)
         pt_3d =  normalized_plane_pt * ref.raw.depth[pt[1].astype(int),pt[0].astype(int)]
-        pt_3d = np.concatenate((pt_3d,np.array([1.])))
-        projected_pt = np.dot(camera,pt_3d)
+        projected_pt = np.dot(rotation,pt_3d) + translation
         tar_pt = np.dot(K,projected_pt)
         tar_pt = tar_pt[:2]/tar_pt[2]
 
@@ -58,7 +79,7 @@ class PoseReprojectionCost(PyCeres.CostFunction):
     def __init__(self, ref_frame, tar_frame, pt):
         super().__init__()
         self.set_num_residuals(1) 
-        self.set_parameter_block_sizes([12])
+        self.set_parameter_block_sizes([6])
 
         self.ref = ref_frame
         self.tar = tar_frame
@@ -69,7 +90,7 @@ class PoseReprojectionCost(PyCeres.CostFunction):
 
     # The CostFunction::Evaluate(...) virtual function implementation
     def Evaluate(self, parameters, residuals, jacobians):
-        camera = parameters[0].reshape((3,4))
+        camera = parameters[0]
 
         residuals[0] = self.cost_function(camera)
 
@@ -100,12 +121,10 @@ def reprojectionMinimizationPose(frame1, frame2, initial_p):
 
 def optimizePoses(frameSeq,init):
     ref = frameSeq[0]
-    transf = [np.eye(4)]
+    transf = []
     for k in range(1,len(frameSeq)):
         tar = frameSeq[k]
         new_pose = reprojectionMinimizationPose(ref,tar,init[k][:3])
-        new_pose = new_pose.reshape(3,4)
-        new_pose = np.vstack((new_pose,[0.,0.,0.,1.]))
         transf.append(new_pose)
     return transf
 
@@ -115,6 +134,7 @@ if __name__ == '__main__':
     from reprojection import *
     seq = FrameSeq([str(10*k) for k in range(21)][:2],precomputed=True)
     init = ICP(seq,registration_technique='point2plane')
+    init = [np.zeros(3),np.zeros(3)]
     opt = optimizePoses(seq,init)
     seq.transform(opt)
     seq.display()
