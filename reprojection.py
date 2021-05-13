@@ -3,7 +3,7 @@ import numpy as np
 from jax import jit, grad, jacfwd, jacrev
 from numpy.matrixlib.defmatrix import matrix
 
-from util import highGradientPixels
+from util import highGradientPixels, uniformlySamplesPixels
 
 # PyCeres import
 import sys
@@ -184,7 +184,7 @@ def reprojectionMinimizationPose(frame1, frame2, initial_p, max_step=500, verbos
     problem = PyCeres.Problem()
     camera = np.ravel(initial_p)
 
-    _, pixels = highGradientPixels(frame1,mask=frame1.raw.planarMask)
+    _, pixels = uniformlySamplesPixels(frame1,mask=frame1.raw.planarMask)
 
     # Add cost function
     cost_function = PoseReprojectionCost(frame1,frame2,pixels)
@@ -222,7 +222,7 @@ from main import ICP
 from frameseq import FrameSeq
 
 def main():
-    seq = FrameSeq([str(10*k) for k in range(21)][:4],precomputed=True)
+    seq = FrameSeq([str(10*k) for k in range(21)][:2],precomputed=True)
     init = ICP(seq,registration_technique='point2plane')
     seq.transform(init)
     seq.display()

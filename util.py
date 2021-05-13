@@ -21,9 +21,10 @@ def highGradientPixels(frame,threshold=0.05,mask=None):
     ----------
     frame : Frame
         Frame object
-    
     treshold : int
         min value of high gradient pixels
+    mask : np.array | None
+        if not None, only the pixels within the mask will be kept
 
     Returns
     -------
@@ -32,8 +33,6 @@ def highGradientPixels(frame,threshold=0.05,mask=None):
         gradient one
     pixels : np.array
         list of coordinates of high gradient pixels
-    mask : np.array | None
-        if not None, only the pixels within the mask will be kept
     '''
     # First apply some gaussian fitler 
     gray_img = cv2.GaussianBlur(frame.raw.img_gray,(5,5),0)
@@ -67,12 +66,48 @@ def highGradientPixels(frame,threshold=0.05,mask=None):
 
     return result, pixels
 
+
+def uniformlySamplesPixels(frame,mask=None,n=1000):
+    '''
+    Sample random pixels from the image
+
+    Parameters
+    ----------
+    frame : Frame
+        Frame object
+    n : int
+        number of pixels to sample
+    mask : np.array | None
+        if not None, only the pixels within the mask will be kept
+
+    Returns
+    -------
+    result : np.array
+        binary map, result[x,y] == 1 iff the pixel (x,y) is a high
+        gradient one
+    pixels : np.array
+        list of coordinates of high gradient pixels
+    '''
+    gray_img = frame.raw.img_gray
+    new_mask = np.zeros_like(gray_img)
+
+    if mask is None:
+        mask = np.zeros_like(gray_img)+255
+
+    candidates = np.nonzero(mask)
+    candidates = np.vstack((candidates[1],candidates[0])).T
+
+    selected = np.random.choice(len(candidates), n, replace=False)
+    pixels = candidates[selected]
+    new_mask[pixels[:,1],pixels[:,0]] = 255
+    return new_mask, pixels
+
 if __name__ == '__main__':
     from frame import Frame
     f = Frame('100')
     res, p = highGradientPixels(f,mask=f.raw.planarMask)
     imshow(res)
     print(p.shape)
-    res, p = highGradientPixels(f)
+    res, p = uniformlySamplesPixels(f,mask=f.raw.planarMask)
     imshow(res)
     print(p.shape)
