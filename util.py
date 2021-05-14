@@ -1,13 +1,83 @@
 import numpy as np
+import jax.numpy as jnp
 import open3d as o3d
 import cv2
 import math as m
+import sys
 from tqdm import tqdm
 
 def imshow(img):
     cv2.imshow('img',img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+def Rx(theta):
+    return jnp.array([[ 1, 0            , 0            ],
+                     [ 0, jnp.cos(theta),-jnp.sin(theta)],
+                     [ 0, jnp.sin(theta), jnp.cos(theta)]])
+  
+def Ry(theta):
+    return jnp.array([[ jnp.cos(theta), 0, jnp.sin(theta)],
+                     [ 0            , 1, 0            ],
+                     [-jnp.sin(theta), 0, jnp.cos(theta)]])
+  
+def Rz(theta):
+    return jnp.array([[ jnp.cos(theta), -jnp.sin(theta), 0 ],
+                     [ jnp.sin(theta), jnp.cos(theta) , 0 ],
+                     [ 0            , 0             , 1 ]])
+
+def rotationM(x,y,z):
+    return jnp.dot(jnp.dot(Rx(x),Rx(y)),Rx(z))
+
+def euler(M): 
+    tol = sys.float_info.epsilon * 10
+    if abs(M[0,0]) < tol and abs(M[1,0]) < tol:
+        eul1 = 0
+        eul2 = m.atan2(-M[2,0], M[0,0])
+        eul3 = m.atan2(-M[1,2], M[1,1])
+    else:   
+        eul1 = m.atan2(M[1,0],M[0,0])
+        sp = m.sin(eul1)
+        cp = m.cos(eul1)
+        eul2 = m.atan2(-M[2,0],cp*M[0,0]+sp*M[1,0])
+        eul3 = m.atan2(sp*M[0,2]-cp*M[1,2],cp*M[1,1]-sp*M[0,1])
+    return eul1, eul2, eul3  
+
+def matrix_pose_to_euler(M):
+    angles = euler(M)
+    euler_pose = np.array([*angles,*M[:3,3]])
+    return euler_pose
+
+def euler_pose_to_matrix(e):
+    M = np.eye(4)
+    M[:-1,:-1] = rotationM(e[0],e[1],e[2])
+    M[:-1,-1] = e[3:]
+    return M
+
+def bilinear_interpolate(im, pt):
+    x,y = pt
+    x0 = jnp.floor(x).astype(int)
+    x1 = x0 + 1
+    y0 = jnp.floor(y).astype(int)
+    y1 = y0 + 1
+
+    x0 = jnp.clip(x0, 0, im.shape[1]-1)
+    x1 = jnp.clip(x1, 0, im.shape[1]-1)
+    y0 = jnp.clip(y0, 0, im.shape[0]-1)
+    y1 = jnp.clip(y1, 0, im.shape[0]-1)
+
+    Ia = im[ y0, x0 ]
+    Ib = im[ y1, x0 ]
+    Ic = im[ y0, x1 ]
+    Id = im[ y1, x1 ]
+
+    wa = (x1-x) * (y1-y)
+    wb = (x1-x) * (y-y0)
+    wc = (x-x0) * (y1-y)
+    wd = (x-x0) * (y-y0)
+
+    return (Ia*wa) + (Ib*wb) + (Ic*wc) + (Id.T*wd)
+
 
 def inside(pt,w,h):
     return (pt[0]>=0) and (pt[1]>=0) and (pt[0]<w) and (pt[1]<h) 
@@ -97,6 +167,7 @@ def uniformlySamplesPixels(frame,mask=None,n=1000):
     candidates = np.nonzero(mask)
     candidates = np.vstack((candidates[1],candidates[0])).T
 
+    n = min(n,len(candidates))
     selected = np.random.choice(len(candidates), n, replace=False)
     pixels = candidates[selected]
     new_mask[pixels[:,1],pixels[:,0]] = 255
@@ -108,6 +179,6 @@ if __name__ == '__main__':
     res, p = highGradientPixels(f,mask=f.raw.planarMask)
     imshow(res)
     print(p.shape)
-    res, p = uniformlySamplesPixels(f,mask=f.raw.planarMask)
+    res, p = uniformlySamplesPixels(f,mask=f.raw.planarMask,n=100000)
     imshow(res)
     print(p.shape)
