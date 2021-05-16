@@ -3,7 +3,10 @@ import numpy as np
 from jax import jit, grad, jacfwd, jacrev
 from numpy.matrixlib.defmatrix import matrix
 
-from util import highGradientPixels, uniformlySamplesPixels, rotationM, matrix_pose_to_euler, euler_pose_to_matrix, bilinear_interpolate
+from util import highGradientPixels, uniformlySamplesPixels, \
+                 rotationM, matrix_pose_to_euler, \
+                 euler_pose_to_matrix, bilinear_interpolate, \
+                 img_gradient
 
 # PyCeres import
 import sys
@@ -13,10 +16,22 @@ pyceres_location='../ceres-bin/lib'
 sys.path.insert(0, os.path.abspath(pyceres_location))
 import PyCeres
 
-def costF(ref, tar, pts):
+def costF(ref, tar, pts, grad_intensity=False):
+    '''
+    Parameters
+    ----------
+    grad_intensity : boolean
+        use the intensity gradient instead of grayscale intensity
+    '''
     K = ref.raw.intrinsic
     K_inv = jnp.linalg.inv(K)
     n = pts.shape[0]
+
+    ref_intensity = ref.raw.img_gray
+    tar_intensity = tar.raw.img_gray
+    if grad_intensity:
+        ref_intensity = img_gradient(ref_intensity)
+        tar_intensity = img_gradient(tar_intensity)
     def cost(camera):
         rotation = rotationM(*camera[:3])
         translation = camera[3:].reshape(-1,1)
@@ -29,8 +44,8 @@ def costF(ref, tar, pts):
         tar_pt = jnp.dot(K,projected_pt)
         tar_pt = tar_pt[:2]/tar_pt[2]
 
-        ref_i = bilinear_interpolate(ref.raw.img_gray, pts.T)
-        tar_i = bilinear_interpolate(tar.raw.img_gray, tar_pt)
+        ref_i = bilinear_interpolate(ref_intensity, pts.T)
+        tar_i = bilinear_interpolate(tar_intensity, tar_pt)
         
         res = ref_i - tar_i
         return res
@@ -106,8 +121,7 @@ from main import ICP
 from frameseq import FrameSeq
 
 def main():
-    seq = FrameSeq([0,10],precomputed=True)
-    seqTrue = FrameSeq([0,10],precomputed=True,poses=True)
+    seq = FrameSeq([100,110],precomputed=True)
     init = ICP(seq,registration_technique='point2plane')
     opt = optimizePoses(seq,init,True,pixel_sample='random')
     seq.transform(opt)
