@@ -82,7 +82,30 @@ def bilinear_interpolate(im, pt):
 def inside(pt,w,h):
     return (pt[0]>=0) and (pt[1]>=0) and (pt[0]<w) and (pt[1]<h) 
 
-def highGradientPixels(frame,threshold=0.05,mask=None):
+def img_gradient(img):
+    '''
+    Computes the gradient of an image
+
+    Parameters
+    ----------
+    img : cv2.Mat
+        image
+
+    Returns
+    -------
+    grad : cv2.Mat
+        gradient
+    '''
+    # First apply some gaussian fitler 
+    gray_img = cv2.GaussianBlur(img,(5,5),0)
+    
+    # Compute gradients
+    grad_x = cv2.Scharr(gray_img,cv2.CV_64F,1,0)
+    grad_y = cv2.Scharr(gray_img,cv2.CV_64F,0,1)
+    grad = cv2.magnitude(grad_x,grad_y)
+    return grad
+
+def highGradientPixels(frame,threshold=0.,mask=None):
     '''
     Computes the high gradient pixels of a frame and returns a binary mask
     corresponding to high gradient pixels of the original frame
@@ -104,13 +127,8 @@ def highGradientPixels(frame,threshold=0.05,mask=None):
     pixels : np.array
         list of coordinates of high gradient pixels
     '''
-    # First apply some gaussian fitler 
-    gray_img = cv2.GaussianBlur(frame.raw.img_gray,(5,5),0)
-    
-    # Compute gradients
-    grad_x = cv2.Scharr(gray_img,cv2.CV_64F,1,0)
-    grad_y = cv2.Scharr(gray_img,cv2.CV_64F,0,1)
-    grad = cv2.magnitude(grad_x,grad_y)
+    # Compute gradient
+    grad = img_gradient(frame.raw.img_gray)
 
     # Apply NMS (non-maximum suppression)
     kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
@@ -176,9 +194,14 @@ def uniformlySamplesPixels(frame,mask=None,n=1000):
 if __name__ == '__main__':
     from frame import Frame
     f = Frame('100')
-    res, p = highGradientPixels(f,mask=f.raw.planarMask)
-    imshow(res)
-    print(p.shape)
-    res, p = uniformlySamplesPixels(f,mask=f.raw.planarMask,n=100000)
-    imshow(res)
-    print(p.shape)
+    
+    gradient = img_gradient(f.raw.img_gray)
+    res_grad, p = highGradientPixels(f,mask=f.raw.planarMask)
+    res_rand, p = uniformlySamplesPixels(f,mask=f.raw.planarMask,n=10000)
+
+    cv2.imshow('true_grad',gradient/255.)
+    cv2.imshow('grad',res_grad)
+    cv2.imshow('rand',res_rand)
+    cv2.imshow('truth',f.raw.img_gray)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
