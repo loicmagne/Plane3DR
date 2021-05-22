@@ -1,12 +1,12 @@
-import jax.numpy as jnp
+import cv2
 import numpy as np
+import jax.numpy as jnp
 from jax import jit, grad, jacfwd, jacrev
-from numpy.matrixlib.defmatrix import matrix
 
-from util import highGradientPixels, uniformlySamplesPixels, \
-                 rotationM, matrix_pose_to_euler, \
+from util import bilinear_interpolate_np, highGradientPixels, uniformlySamplesPixels, \
+                 rotationM, matrix_pose_to_euler, bilinear_interpolate_np, \
                  euler_pose_to_matrix, bilinear_interpolate, \
-                 img_gradient
+                 img_gradient, imshow
 
 # PyCeres import
 import sys
@@ -15,6 +15,30 @@ import math as m
 pyceres_location='../ceres-bin/lib'
 sys.path.insert(0, os.path.abspath(pyceres_location))
 import PyCeres
+
+def reproject(src, dest, transformation):
+    '''
+    Project the src frame into the dest frame given a transformation
+    which maps points from src to dest
+    '''
+    K = dest.raw.intrinsic
+    K_inv = np.linalg.inv(K)
+    rotation = transformation[:-1,:-1]
+    translation = transformation[:-1,-1].reshape(-1,1)
+    h,w = dest.raw.h, dest.raw.w
+    pts = np.nonzero(dest.raw.img_gray+1)
+    pts = np.vstack((pts[1],pts[0]))
+
+    homogeneous = np.vstack((pts,np.ones((1,h*w))))
+    normalized_plane_pt = np.dot(K_inv,homogeneous)
+    depths = dest.raw.depth[pts[1].astype(int),pts[0].astype(int)]
+    pt_3d =  normalized_plane_pt * depths
+    projected_pt = np.dot(rotation.T,pt_3d) - translation
+    tar_pt = np.dot(K,projected_pt)
+    tar_pt = tar_pt[:2]/tar_pt[2]
+
+    reprojection = bilinear_interpolate_np(src.raw.img_gray, tar_pt)
+    return reprojection.reshape(h,w)
 
 def costF(ref, tar, pts, grad_intensity=False):
     '''
@@ -121,11 +145,16 @@ from main import ICP
 from frameseq import FrameSeq
 
 def main():
-    seq = FrameSeq([100,110],precomputed=True)
+    seq = FrameSeq([0,10],precomputed=True)
     init = ICP(seq,registration_technique='point2plane')
-    opt = optimizePoses(seq,init,True,pixel_sample='random')
-    seq.transform(opt)
-    seq.display()
+    opt = optimizePoses(seq,init,True,pixel_sample='gradient')
+    repro_init = reproject(seq[0],seq[1],init[1])
+    repro_opt = reproject(seq[0],seq[1],opt[1])
+    cv2.imshow("original",seq[0].raw.img_gray)
+    cv2.imshow("reprojected init",repro_init/255.)
+    cv2.imshow("reprojected opt",repro_opt/255.)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     PROFILE = False
