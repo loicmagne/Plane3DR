@@ -121,14 +121,16 @@ if __name__ == '__main__':
     
     cloud = []
 
+    f = seq[0]
+
     # Original
-    copy_c = copy.deepcopy(seq[0].cloud)
+    copy_c = copy.deepcopy(f.cloud)
     copy_c.paint_uniform_color([0,0,1])
     cloud.append(copy_c)
 
     # Remapped params
-    seq[0].updatePlaneParams(seq[0].raw.planeParams)
-    copy_c = copy.deepcopy(seq[0].cloud)
+    f.updatePlaneParams(f.raw.planeParams)
+    copy_c = copy.deepcopy(f.cloud)
     copy_c.paint_uniform_color([1,0,0])
     cloud.append(copy_c)
 

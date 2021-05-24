@@ -131,9 +131,6 @@ def depth_from_plane_params(pts, segmentation, plane_parameters, intrinsics):
     homogeneous = np.vstack([pts,np.ones([1,n])])
     normalized_plane_pt = np.dot(K_inv,homogeneous)
     params = plane_parameters.T[segmentation].T
-
-    print(params.shape)
-    print(normalized_plane_pt.shape)
     dot_product = np.sum(params * normalized_plane_pt, axis=0)
     depths = 1./dot_product
 
