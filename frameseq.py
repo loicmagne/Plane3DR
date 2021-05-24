@@ -117,5 +117,20 @@ class FrameSeq():
         o3d.visualization.draw_geometries(transformed_clouds)
 
 if __name__ == '__main__':
-    seq = FrameSeq([str(10*k) for k in range(20)],precomputed=False,poses=True)
-    seq.display()
+    seq = FrameSeq([str(10*k) for k in range(20)],precomputed=True,poses=True)
+    
+    cloud = []
+
+    # Original
+    copy_c = copy.deepcopy(seq[0].cloud)
+    copy_c.paint_uniform_color([0,0,1])
+    cloud.append(copy_c)
+
+    # Remapped params
+    seq[0].updatePlaneParams(seq[0].raw.planeParams)
+    copy_c = copy.deepcopy(seq[0].cloud)
+    copy_c.paint_uniform_color([1,0,0])
+    cloud.append(copy_c)
+
+
+    o3d.visualization.draw_geometries(cloud)

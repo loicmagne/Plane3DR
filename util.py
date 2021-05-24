@@ -106,6 +106,41 @@ def bilinear_interpolate_np(im, pt):
 def inside(pt,w,h):
     return (pt[0]>=0) and (pt[1]>=0) and (pt[0]<w) and (pt[1]<h) 
 
+def depth_from_plane_params(pts, segmentation, plane_parameters, intrinsics):
+    '''
+    Return a depth map given a plane segmentation mask and the corresponding
+    plane parameters
+
+    Parameters
+    ----------
+    pts : np.ndarray (shape: (2,n))
+        list of points where we want to compute depth
+    segmentation : np.ndarray (shape: (n))
+        segmentation[i] is the plane in which belong the i-th point
+    plane_parameters : np.ndarray (shape: (3,k))
+        plane_parameters[:,i] gives the parameters of the i-th plane
+    intrisics : np.ndarray (shape: (3,3))
+        instrinsic camera matrix
+    mask : np.ndarray (shape: (n))
+        optionnal, binary mask to mask out non planar regions
+    '''
+    K = intrinsics
+    K_inv = np.linalg.inv(K)
+
+    n = len(pts[0])
+    homogeneous = np.vstack([pts,np.ones([1,n])])
+    normalized_plane_pt = np.dot(K_inv,homogeneous)
+    params = plane_parameters.T[segmentation].T
+
+    print(params.shape)
+    print(normalized_plane_pt.shape)
+    dot_product = np.sum(params * normalized_plane_pt, axis=0)
+    depths = 1./dot_product
+
+    return depths
+
+
+
 def img_gradient(img):
     '''
     Computes the gradient of an image

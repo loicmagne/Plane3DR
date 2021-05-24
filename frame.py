@@ -9,6 +9,8 @@ import pickle as pickle
 sys.path.insert(0, os.path.abspath('./PlanarReconstruction/'))
 import PlanarReconstruction.infer as infer
 
+from util import depth_from_plane_params
+
 class PlaneNet():
     '''
     Static Class to run inference of PlaneNet
@@ -53,6 +55,7 @@ class RawFrame():
         self.depth, self.segmentation, self.planarMask, self.planeParams = \
             PlaneNet.infer(self.img_path)
         self.planarMask = (255*self.planarMask).astype(np.uint8)
+
         # self.planeParams /= np.square(np.linalg.norm(self.planeParams.T,axis=1).T)
 
         # Resize image to the size of the depth map
@@ -66,17 +69,27 @@ class RawFrame():
         if depthTreshold:
             self.depth[self.depth>=depthTreshold] = 0
 
-        # Compute intrinsics and point cloud
+        # Compute intrinsics
+        intrinsic = self.o3d_intrinsics()
+        self.intrinsic = intrinsic.intrinsic_matrix
+
+        # Compute point cloud
+        self.cloud = self.depth_to_cloud(self.depth)
+
+    def o3d_intrinsics(self):
         f = 1170.
         cx, cy = 128, 96
         scale_x = self.w / 1296.
         scale_y = self.h / 968.
         intrinsic = o3d.camera.PinholeCameraIntrinsic()
         intrinsic.set_intrinsics(self.w,self.h,f*scale_x,f*scale_y,cx,cy)
-        depth_img = o3d.geometry.Image(self.depth)
+        return intrinsic
+
+    def depth_to_cloud(self,depth):
+        intrinsic = self.o3d_intrinsics()
+        depth_img = o3d.geometry.Image(depth)
         cloud = o3d.geometry.PointCloud.create_from_depth_image(depth_img,intrinsic)
-        self.intrinsic = intrinsic.intrinsic_matrix
-        self.cloud = np.asarray(cloud.points)
+        return np.asarray(cloud.points)
 
     def save(self):
         with open(f'data/precomputed_frames/{self.img_path}.pkl', 'wb') as f:
@@ -119,7 +132,21 @@ class Frame():
 
     def updatePlaneParams(self, planeParams):
         self.raw.planeParams = planeParams
+
+        planar_pts = np.nonzero(self.raw.planarMask)
+        pts = np.vstack([planar_pts[1],planar_pts[0]])
+        segmentation = self.raw.segmentation[planar_pts]
+
+        new_depths = depth_from_plane_params(pts,segmentation-1,planeParams,self.raw.intrinsic)
+
+        new_depth_map = np.zeros_like(self.raw.depth)
+        new_depth_map[planar_pts] = new_depths
+
+        self.raw.depth = new_depth_map
+        self.raw.cloud = self.raw.depth_to_cloud(self.raw.depth)
+
         self.cloudParam.points = o3d.utility.Vector3dVector(self.raw.planeParams.T)
+        self.cloud.points = o3d.utility.Vector3dVector(self.raw.cloud)
 
     def save(self):
         self.raw.save()
