@@ -16,7 +16,7 @@ pyceres_location='../ceres-bin/lib'
 sys.path.insert(0, os.path.abspath(pyceres_location))
 import PyCeres
 
-def reproject(src, dest, transformation):
+def reproject(dest, src, transformation):
     '''
     Project the src frame into the dest frame given a transformation
     which maps points from src to dest
@@ -33,7 +33,7 @@ def reproject(src, dest, transformation):
     normalized_plane_pt = np.dot(K_inv,homogeneous)
     depths = dest.raw.depth[pts[1].astype(int),pts[0].astype(int)]
     pt_3d =  normalized_plane_pt * depths
-    projected_pt = np.dot(rotation.T,pt_3d) - translation
+    projected_pt = np.dot(rotation.T,pt_3d - translation)
     tar_pt = np.dot(K,projected_pt)
     tar_pt = tar_pt[:2]/tar_pt[2]
 
@@ -64,7 +64,7 @@ def costfPose(ref, tar, pts, grad_intensity=False):
         normalized_plane_pt = jnp.dot(K_inv,homogeneous)
         depths = ref.raw.depth[pts.T[1].astype(int),pts.T[0].astype(int)]
         pt_3d =  normalized_plane_pt * depths
-        projected_pt = jnp.dot(rotation.T,pt_3d) - translation
+        projected_pt = jnp.dot(rotation.T,pt_3d-translation)
         tar_pt = jnp.dot(K,projected_pt)
         tar_pt = tar_pt[:2]/tar_pt[2]
 
@@ -130,7 +130,7 @@ def costfPoseGeometry(ref, tar, pts, grad_intensity=False):
         normalized_plane_pt = jnp.dot(K_inv,homogeneous)
         depths = depth_from_plane_params(pts, segmentation, plane_params, K, K_inv)
         pt_3d =  normalized_plane_pt * depths
-        projected_pt = jnp.dot(rotation.T,pt_3d) - translation
+        projected_pt = jnp.dot(rotation.T,pt_3d-translation)
         tar_pt = jnp.dot(K,projected_pt)
         tar_pt = tar_pt[:2]/tar_pt[2]
 
@@ -168,7 +168,7 @@ class PoseGeometryReprojectionCost(PyCeres.CostFunction):
         return True
 
 
-def reprojection_minimization(cost_function, init, verbose, max_step=1000):
+def reprojection_minimization(cost_function, init, verbose, max_step=500):
     variable = np.ravel(init)
     problem = PyCeres.Problem()
     # Add cost function
@@ -190,7 +190,7 @@ def reprojection_minimization(cost_function, init, verbose, max_step=1000):
         print(summary.FullReport())
     return variable
 
-def photometric_optimization(frameSeq,verbose=False,mode=1,pixel_sample='gradient'):
+def photometric_optimization(frameSeq,verbose=False,mode=2,pixel_sample='gradient'):
     '''
     mode : defines what should be optimized
         1 : only camera poses
@@ -225,11 +225,11 @@ from main import ICP
 from frameseq import FrameSeq
 
 def main():
-    seq = FrameSeq([20,30],precomputed=True)
+    seq = FrameSeq([0,10],precomputed=True)
     init = ICP(seq,registration_technique='point2plane')
     repro_init = reproject(seq[0],seq[1],init[1])
     seq.transform(init)
-    opt = photometric_optimization(seq,True,mode=2,pixel_sample='random')
+    opt = photometric_optimization(seq,True,mode=2,pixel_sample='gradient')
     seq.transform(opt)
     seq.display()
     repro_opt = reproject(seq[0],seq[1],opt[1])
@@ -238,7 +238,7 @@ def main():
     cv2.imshow("reprojected opt",repro_opt/255.)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-
+    
 if __name__ == '__main__':
     PROFILE = False
 
