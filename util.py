@@ -106,7 +106,7 @@ def bilinear_interpolate_np(im, pt):
 def inside(pt,w,h):
     return (pt[0]>=0) and (pt[1]>=0) and (pt[0]<w) and (pt[1]<h) 
 
-def depth_from_plane_params(pts, segmentation, plane_parameters, intrinsics):
+def depth_from_plane_params(pts, segmentation, plane_parameters, intrinsics, intrinsic_inv = None):
     '''
     Return a depth map given a plane segmentation mask and the corresponding
     plane parameters
@@ -125,7 +125,10 @@ def depth_from_plane_params(pts, segmentation, plane_parameters, intrinsics):
         optionnal, binary mask to mask out non planar regions
     '''
     K = intrinsics
-    K_inv = np.linalg.inv(K)
+    if intrinsic_inv is not None:
+        K_inv = intrinsic_inv
+    else:
+        K_inv = np.linalg.inv(K)
 
     n = len(pts[0])
     homogeneous = np.vstack([pts,np.ones([1,n])])

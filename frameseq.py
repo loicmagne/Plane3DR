@@ -121,7 +121,7 @@ if __name__ == '__main__':
     
     cloud = []
 
-    f = seq[0]
+    f = seq[1]
 
     # Original
     copy_c = copy.deepcopy(f.cloud)
