@@ -27,7 +27,7 @@ def Rz(theta):
                      [ 0            , 0             , 1 ]])
 
 def rotationM(x,y,z):
-    return jnp.dot(jnp.dot(Rx(x),Rx(y)),Rx(z))
+    return jnp.dot(jnp.dot(Rx(x),Ry(y)),Rz(z))
 
 def euler(M): 
     tol = sys.float_info.epsilon * 10
