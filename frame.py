@@ -143,7 +143,7 @@ class Frame():
 
         new_depth_map = np.zeros_like(self.raw.depth)
         new_depth_map[planar_pts] = new_depths
-        new_depth_map[new_depth_map>=self.raw.depthTreshold] = 0
+        new_depth_map[new_depth_map>=self.raw.depthThreshold] = 0
 
         self.raw.depth = new_depth_map
         self.raw.cloud = self.raw.depth_to_cloud(self.raw.depth)

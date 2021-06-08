@@ -113,7 +113,16 @@ class FrameSeq():
             self.transformations = transformations
             self.set_relative_transformations()
 
-    def display(self,save=None):
+    def display(self,save=None,color_plane=False):
+        """
+        Parameters
+        ----------
+        save : None or string
+            if not None, save the 3D scene in the given file
+        color_plane : boolean
+            if True, the color in the point cloud will be the plane segmentation,
+            else the depth
+        """
         cloud = []
         for f,t in zip(self.frames,self.transformations):
             copy_c = copy.deepcopy(f.cloud)
@@ -133,7 +142,8 @@ class FrameSeq():
 
             # Change colors
             pts_colors = colors[segmentation]
-            copy_c.colors = o3d.utility.Vector3dVector(pts_colors)
+            if color_plane:
+                copy_c.colors = o3d.utility.Vector3dVector(pts_colors)
             cloud.append(copy_c)
 
         o3d.visualization.draw_geometries(cloud)
@@ -144,5 +154,5 @@ class FrameSeq():
             o3d.io.write_point_cloud(save, c)
 
 if __name__ == '__main__':
-    seq = FrameSeq([str(10*k) for k in range(20)],precomputed=True,poses=True)
-    seq.display()
+    seq = FrameSeq([str(10*k) for k in range(20)],precomputed=False,poses=True)
+    seq.display(color_plane=True)
