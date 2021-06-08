@@ -64,6 +64,8 @@ class RawFrame():
         self.img_gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
 
         # Remove non planar areas and far areas
+        self.planar = planar
+        self.depthThreshold = depthTreshold
         if planar:
             self.depth[self.planarMask==0] = 0
         if depthTreshold:
@@ -141,6 +143,7 @@ class Frame():
 
         new_depth_map = np.zeros_like(self.raw.depth)
         new_depth_map[planar_pts] = new_depths
+        new_depth_map[new_depth_map>=self.raw.depthTreshold] = 0
 
         self.raw.depth = new_depth_map
         self.raw.cloud = self.raw.depth_to_cloud(self.raw.depth)

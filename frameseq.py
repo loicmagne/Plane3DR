@@ -113,25 +113,36 @@ class FrameSeq():
             self.transformations = transformations
             self.set_relative_transformations()
 
-    def display(self):
-        """
-        # Rotates the point cloud to face the camera
-        cloud.transform([[ 1 , 0 , 0 , 0 ], 
-                         [ 0 ,-1 , 0 , 0 ],
-                         [ 0 , 0 ,-1 , 0 ],
-                         [ 0 , 0 , 0 , 1 ]])
-        """
-
+    def display(self,save=None):
         cloud = []
         for f,t in zip(self.frames,self.transformations):
             copy_c = copy.deepcopy(f.cloud)
             copy_c.transform(t)
+
+            depth = f.raw.depth
+            depth[depth<0] = 0
+
+            # Get planar points
+            pts = np.nonzero(depth)
+
+            # Generate random colors
+            colors = np.random.uniform(size=[len(np.unique(f.raw.segmentation)),3])
+
+            # Get planes segmentation
+            segmentation = f.raw.segmentation[pts[0],pts[1]]
+
+            # Change colors
+            pts_colors = colors[segmentation]
+            copy_c.colors = o3d.utility.Vector3dVector(pts_colors)
             cloud.append(copy_c)
 
         o3d.visualization.draw_geometries(cloud)
+        if save is not None:
+            c = cloud[0]
+            for k in range(1,len(cloud)):
+                c = c + cloud[k]
+            o3d.io.write_point_cloud(save, c)
 
 if __name__ == '__main__':
     seq = FrameSeq([str(10*k) for k in range(20)],precomputed=True,poses=True)
-    seq.display()
-    seq.set_absolute_transformations()
     seq.display()
