@@ -1,3 +1,6 @@
 [submodule "PlanarReconstruction"]
 	path = PlanarReconstruction
 	url = https://github.com/loicmagne/PlanarReconstruction.git
+[submodule "jax_transformations3d"]
+	path = jax_transformations3d
+	url = https://github.com/cpgoodri/jax_transformations3d.git
